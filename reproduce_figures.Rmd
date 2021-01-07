@@ -1,0 +1,571 @@
+---
+title: "Monocyte metabolic programs are associated with resistance to TST/IGRA conversion"
+author: "Simmons et al"
+date: "12/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+require(data.table)
+require(DT)
+require(VennDiagram)
+require(gridExtra)
+require(stringr)
+require(ggplot2)
+require(pheatmap)
+require(ggrepel)
+require(cowplot)
+```
+
+```{r load}
+load("data/SimmonsRSTRpaper.RData")
+```
+
+### Figure 1: Differentially-expressed genes do not distinguish LTBI and RSTR donor monocytes
+
+RNA from whole blood of Ugandan and South African donors and analyzed by RNAseq; differential gene expression between RSTR and LTBI donors were compared (A,B) after exclusion of theindicated samples. (C,D) CD14+ monocytes were purified from cryopreserved peripheral blood mononuclear cells (PBMC) from South Africa and Uganda subjects and differentiated in monocyte-colony stimulating factor (M-CSF) for 48 hours before RNA isolation and sequencing. Volcano plots identify no single genes that were significantly (false discovery rate < 0.2) differentially expressed between RSTR and LTBI subjects in either population in the whole blood (B) and monocyte (D) analyses.
+
+```{r fig1B}
+UgandaPaxgene_DEGs$FDR <- ifelse(UgandaPaxgene_DEGs$adj.P.Val > FDRCut, "NonSig", "Sig") 
+l <- ggplot(UgandaPaxgene_DEGs, aes(x=logFC, y=-log10(P.Value), color=FDR)) + 
+    geom_point(size=0.25) + 
+    ggtitle(" ") +
+    geom_vline(xintercept=c(-1,1), linetype="dashed", color="blue") +
+    geom_hline(yintercept=-log10(c(0.01)), linetype="dashed", color="blue")+
+       theme_bw() +
+    theme(legend.position="none") +  scale_colour_manual(values=c("black", "red")) + 
+    theme(aspect.ratio=1, 
+          text = element_text(size = 8)
+          , plot.title = element_text(size = 8)
+          , axis.title = element_text(size = 8)
+          , axis.text = element_text(size = 8)) +
+    theme(plot.margin = unit(c(0,0,0,0), "lines")) +
+    lims(x=c(-4,4), y=c(0,6)) +
+    labs(title = "Uganda")
+
+SouthAfricaPaxgene_DEGs$FDR <- ifelse(SouthAfricaPaxgene_DEGs$adj.P.Val > FDRCut, "NonSig", "Sig") 
+r <- ggplot(SouthAfricaPaxgene_DEGs, aes(x=logFC, y=-log10(P.Value), color=FDR)) + 
+    geom_point(size=0.25) + 
+    ggtitle(" ") +
+    geom_vline(xintercept=c(-1,1), linetype="dashed", color="blue") +
+    geom_hline(yintercept=-log10(c(0.01)), linetype="dashed", color="blue")+
+       theme_bw() +
+    theme(legend.position="none") +  scale_colour_manual(values=c("black", "red")) + 
+    theme(aspect.ratio=1, 
+          text = element_text(size = 8)
+          , plot.title = element_text(size = 8)
+          , axis.title = element_text(size = 8)
+          , axis.text = element_text(size = 8)) +
+    theme(plot.margin = unit(c(0,0,0,0), "lines")) +
+    lims(x=c(-4,4), y=c(0,6)) +
+    labs(title = "SA")
+plot_grid(l,r, labels="B")
+```
+
+
+```{r fig1D}
+UgandaMacrophage_DEGs$FDR <- ifelse(UgandaMacrophage_DEGs$adj.P.Val > FDRCut, "NonSig", "Sig") 
+l <- ggplot(UgandaMacrophage_DEGs, aes(x=logFC, y=-log10(P.Value), color=FDR)) + 
+    geom_point(size=0.25) + 
+    ggtitle(" ") +
+    geom_vline(xintercept=c(-1,1), linetype="dashed", color="blue") +
+    geom_hline(yintercept=-log10(c(0.01)), linetype="dashed", color="blue")+
+       theme_bw() +
+    theme(legend.position="none") +  scale_colour_manual(values=c("black", "red")) + 
+    theme(aspect.ratio=1, 
+          text = element_text(size = 8)
+          , plot.title = element_text(size = 8)
+          , axis.title = element_text(size = 8)
+          , axis.text = element_text(size = 8)) +
+    theme(plot.margin = unit(c(0,0,0,0), "lines")) +
+    lims(x=c(-4,4), y=c(0,6)) +
+    labs(title = "Uganda")
+
+SouthAfricaMacrophage_DEGs$FDR <- ifelse(SouthAfricaMacrophage_DEGs$adj.P.Val > FDRCut, "NonSig", "Sig") 
+r <- ggplot(SouthAfricaMacrophage_DEGs, aes(x=logFC, y=-log10(P.Value), color=FDR)) + 
+    geom_point(size=0.25) + 
+    ggtitle(" ") +
+    geom_vline(xintercept=c(-1,1), linetype="dashed", color="blue") +
+    geom_hline(yintercept=-log10(c(0.01)), linetype="dashed", color="blue")+
+       theme_bw() +
+    theme(legend.position="none") +  scale_colour_manual(values=c("black", "red")) + 
+    theme(aspect.ratio=1, 
+          text = element_text(size = 8)
+          , plot.title = element_text(size = 8)
+          , axis.title = element_text(size = 8)
+          , axis.text = element_text(size = 8)) +
+    theme(plot.margin = unit(c(0,0,0,0), "lines")) +
+    lims(x=c(-4,4), y=c(0,6)) +
+    labs(title = "SA")
+plot_grid(l,r, labels="D")
+```
+
+### Figure 2: Differentially expressed gene sets in RSTR versus LTBI donors are shared across Uganda and South Africa cohorts
+
+(A) Using the CAMERA gene set test on curated gene sets available from the Molecular Signatures Database (MSigDB, C2 and C7), many transcriptional programs were enriched with RSTR and LTBI phenotypes in Uganda (n=854 gene sets) and in South Africa (n= 542 gene sets). Among the gene sets with enrichment in both populations (n=306), type 1 interferon- driven transcriptional responses enriched among RSTR and LTBI donors whereas genes involved in metabolic programs (e.g. oxidative phosphorylation, TCA cycle) had higher expression among RSTR donors. 
+
+```{r fig2A}
+mclist_mediaonly <- merge(mcUg_mediaonly, mcSA_mediaonly, by=c("GSEA_category","NGenes"))
+
+grid.newpage()
+vennMc_mediaonly <- draw.pairwise.venn(area1 = length(rownames(mcUg_mediaonly))
+                             ,area2 = length(rownames(mcSA_mediaonly))
+                             ,cross.area = nrow(mclist_mediaonly)
+                             ,category = c('Uganda', 'SouthAfrica')
+                             ,cat.pos = c(180, 180)
+                             ,col=c('#00BFC4', '#F8766D')
+                             ,fill=c('#00BFC4', '#F8766D')
+                             ,ind = FALSE
+                             ,euler.d = TRUE
+                             ,scaled = TRUE
+)
+grid.arrange(gTree(children=vennMc_mediaonly), top="")
+
+vennMcTab_mediaonly <- datatable(mclist_mediaonly
+                       ,caption=""
+                       , extensions = 'Buttons'
+                       , options = list(dom = 'Bfrtip',
+                                        buttons = c('csv', 'excel'))
+)
+
+```
+<table border = 1>
+<tr>
+```{r fig2Atable, results='asis', echo=FALSE, warning=FALSE}
+formatRound(vennMcTab_mediaonly, c("Ug_PValue","Ug_FDR","SA_PValue","SA_FDR"),6)
+```
+</tr>
+</table>
+
+(B) Similar enrichment of metabolic programs among RSTR donors across cohorts was also identified when gene sets curated by gene ontology (GO) terms were analyzed by CAMERA (MSigDB C5).
+
+```{r fig2B}
+mclist5_mediaonly <- merge(mcUg5_mediaonly, mcSA5_mediaonly, by=c("GSEA_category","NGenes"))
+
+grid.newpage()
+vennM5_mediaonly <- draw.pairwise.venn(area1 = length(rownames(mcUg5_mediaonly))
+                             ,area2 = length(rownames(mcSA5_mediaonly))
+                             ,cross.area = nrow(mclist5_mediaonly)
+                             ,category = c('Uganda', 'SouthAfrica')
+                             ,cat.pos = c(180, 180)
+                             ,col=c('#00BFC4', '#F8766D')
+                             ,fill=c('#00BFC4', '#F8766D')
+                             ,ind = FALSE
+                             ,euler.d = TRUE
+                             ,scaled = TRUE
+)
+grid.arrange(gTree(children=vennM5_mediaonly), top="")
+
+vennM5Tab_mediaonly <- datatable(mclist5_mediaonly
+                       ,caption=""
+                       , extensions = 'Buttons'
+                       , options = list(dom = 'Bfrtip',
+                                        buttons = c('csv', 'excel'))
+)
+
+```
+<table border = 1>
+<tr>
+```{r fig2Btable, results='asis', echo=FALSE, warning=FALSE}
+formatRound(vennM5Tab_mediaonly, c("Ug_PValue","Ug_FDR","SA_PValue","SA_FDR"),6)
+```
+</tr>
+</table>
+
+### Figure 3: Gene sets derived from free fatty-acid-stimulated macrophages are consistently enriched among RSTR or LTBI donors across Uganda and South Africa cohorts
+
+Gene sets related to a variety of macrophage stimuli were obtained from previously published weighted gene co-expression analysis (WGCNA) modules. Enrichment among RSTR vs. LTBI transcriptomes in any of these 49 WGCNA modules was analyzed using CAMERA geneset enrichment
+
+(A) Of 4 modules with significant enrichment in South Africa (FDR<0.01), 4 were also enriched in Uganda (FDR<0.001).
+```{r fig3A}
+mclistX_mediaonly <- merge(mcUgX_mediaonly, mcSAX_mediaonly, by=c("GSEA_category","NGenes"))
+
+grid.newpage()
+vennMX_mediaonly <- draw.pairwise.venn(area1 = length(rownames(mcUgX_mediaonly))
+                             ,area2 = length(rownames(mcSAX_mediaonly))
+                             ,cross.area = nrow(mclistX_mediaonly)
+                             ,category = c('Uganda', 'SouthAfrica')
+                             ,cat.pos = c(180, 180)
+                             ,col=c('#00BFC4', '#F8766D')
+                             ,fill=c('#00BFC4', '#F8766D')
+                             ,ind = FALSE
+                             ,euler.d = TRUE
+                             ,scaled = TRUE
+)
+grid.arrange(gTree(children=vennMX_mediaonly), top="")
+
+vennMXTab_mediaonly <- datatable(mclistX_mediaonly
+                       ,caption=""
+                       , extensions = 'Buttons'
+                       , options = list(dom = 'Bfrtip',
+                                        buttons = c('csv', 'excel'))
+)
+
+```
+<table border = 1>
+<tr>
+```{r fig3Atable, results='asis', echo=FALSE, warning=FALSE}
+formatRound(vennMXTab_mediaonly, c("Ug_PValue","Ug_FDR","SA_PValue","SA_FDR"),6)
+```
+</tr>
+</table>
+
+(B) Correlation plot comparing P values from CAMERA enrichment scores in Uganda (x-axis) versus South Africa (y-axis) and corresponding direction of enrichment with RSTR phenotype (red) or LTBI phenotype (blue). Colors indicate that the enrichment direction among Ugandan monocyte donors (color of data point) or among South African monocyte donors (color of module number) is highly concordant. Gene sets that correlate to macrophage free fatty acid stimulations (Set 27, Set 6, Set 24, Set 26) were enriched among RSTR donors in Uganda and South Africa.
+
+```{r fig3B}
+FDRCut <- 0.01
+
+m <- merge(u,sa, by=c("NGenes","GSEA_category"))
+m$GSEA_category_short <- str_remove(m$GSEA_category, "Xue2014_set+")
+
+cols <- c("Up" = "blue", "Down" = "red")
+ggplot(m, aes(x=-log10(PValue_Ug),y=-log10(PValue_SA), label=GSEA_category_short, col=Direction_SA)) +
+    geom_point(aes(col=Direction_Ug), size=2) +
+    geom_text_repel(aes(col=Direction_SA), show.legend = F, size=4)+
+    theme_bw() +
+    theme(legend.position = "none") +
+    guides(col=guide_legend(nrow=6)) +
+    scale_colour_manual(values = cols) 
+```
+
+### Figure 4: OA and PA modulate macrophage cytokine responses, but only PA potentiates intracellular Mtb growth
+(A) Healthy human donor monocyte-derived macrophages (MDM) were infected with a reporter Mtb Erdman strain (Mtb-lux) for 4 hours (MOI = 2), washed, then treated with palmitic acid (PA), oleic acid (OA) or vehicle controls that were matched for BSA content. 
+
+(B) Mtb-lux was diluted in complete 7H9 media containing indicated concentrations of OA, PA, matched BSAcontrols, or 0.5 ug/mL rifampin (RIF) to an OD ~0.005. Replication was measured as relative light units (RLU) after 3 days in each experiment. 
+
+(C) MDM were treated with the indicated doses of PA, OA or matched BSA content controls overnight and then stimulated with Mtb whole cell lysate (TBWCL) or left unstimulated; cytokine secretion was quantitated by ELISA from supernatants at 24 hours post-stimulation. Means are plotted for biologic replicates (A, 5 replicates; B, 3 replicates; and C, 2-3 replicates) along with standard deviation (error bar). Effects are representative of over five independent experiments (A, macrophages) or two independent experiments (B-C); each drug treatment was fit using a simple linear model to test for a significant dose-dependent effect on Mtb growth (A-C), and in the case of IL1b and IL10, data were log-transformed to achieve the best regression fit. 
+
+### Figure 5: Control of intracellular Mtb growth in PA-treated macrophages is restored by AMPK activation 
+(A) Healthy human donor monocyte-derived macrophages (MDM) were infected with a reporter Mtb Erdman strain (Mtb-lux) for 4 hours (MOI = 2), washed, then treated with 100 μM palmitic acid (PA) alone or in combination with the indicated doses of the
+AMP kinase activator A 769669. 
+
+(B) U937 monocytes with disruptions in inflammasome genes (encoding NLRP3 or NLRC4), an autophagy gene (ULK1), or control cell lines expressing non-targeting guide-RNAs were generated by CRISPR-Cas9 technology, differentiated in phorbol-12-myristate 13-acetate(PMA) and infected with Mtb-lux as in (A), then treated with 200 μM PA or BSA vehicle control. Relative light units (RLU) were recorded at 3 days post-infection (A-B), and findings are representative of 2 independent experiments. P values for the indicated pair-wise comparisons were calculated by two-tailed t test.
+
+### Supplement Figure 1: Comparison of Ugandan household contact RSTR and LTBI whole blood transcriptional profiles
+RNA was isolated from whole blood of Ugandan household contactsof tuberculosis cases (31 RSTR versus 28 LTBI) and analyzed by RNA sequencing. Deconvolution of transcriptomic data (immunoStates) compares predicted cell frequencies. P-values were calculated by one-sided t-test.
+
+```{r SF1}
+```
+
+### Supplemental Figure 2: Comparison of South African gold miner RSTR and LTBI whole blood transcriptional profiles
+
+RNA was isolated from whole blood of South African goldminers (16RSTR versus 24 LTBI) and analyzed by RNA sequencing. Deconvolution of transcriptomic data (immunoStates) compares predicted cell frequencies. P values were calculated by one-sided t-test.
+
+```{r SF2}
+```
+
+### Supplemental Figure 3: Comparison of cell population frequencies in RSTR and LTBI donor whole blood
+
+Peripheral blood mononuclear cells were fixed and stained with surface markers before cell population frequencies were quantitated by flow cytometry. Mean cell population frequencies in RSTR and LTBI were compared by the Mann-Whitney test (P value).
+
+```{r SF3}
+```
+
+### Supplemental Figure 4: Multidimensional scaling of transcriptomes by available epidemiologic and demographic data in Uganda
+
+Global effects of clinical phenotype (RSTR versus LTBI), age, body mass index (BMI), BCG status, exposure risk score, gender and family relatedness on monocyte transcription in Uganda was assessed by multidimensional scaling (MDS).
+
+```{r SF4_UgandaMacrophage_MDS, fig.height=12, fig.width=9}
+pttype <- ggplot(mdsUg, aes(x=x, y=y, col=pttype)) +
+  geom_point() +
+  # geom_text(aes(label=ptid), size=2) +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("clinical phenotype")', x=-2, y=2, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.15, 0.20),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        legend.title  = element_blank()
+  )
+
+age <- ggplot(mdsUg, aes(x=x, y=y, col=age)) +
+  geom_point() +
+  # geom_text(aes(label=ptid), size=2) +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("age")', x=-2, y=2, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.15, 0.30),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        axis.title.y=element_blank(),
+        legend.title  = element_blank()
+  )
+
+score <- ggplot(mdsUg, aes(x=x, y=y, col=riskScore)) +
+  geom_point() +
+  # geom_text(aes(label=ptid), size=2) +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("exposure risk score")', x=-2, y=2, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.15, 0.30),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        legend.title  = element_blank()
+  )
+
+sex <- ggplot(mdsUg, aes(x=x, y=y, col=sex)) +
+  geom_point() +
+  # geom_text(aes(label=ptid), size=2) +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("sex")', x=-2, y=2, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.15, 0.20),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        axis.title.y=element_blank(),
+        legend.title  = element_blank()
+  )
+
+BMI <- ggplot(mdsUg, aes(x=x, y=y, col=BMI)) +
+  geom_point() +
+  # geom_text(aes(label=ptid), size=2) +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("BMI")', x=-2, y=2, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.15, 0.30),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        legend.title  = element_blank()
+  )
+
+BCG <- ggplot(mdsUg, aes(x=x, y=y, col=BCG)) +
+  geom_point() +
+  # geom_text(aes(label=ptid), size=2) +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("BCG scar")', x=-2, y=2, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = c(0.15, 0.25),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        axis.title.y=element_blank(),
+        legend.title  = element_blank()
+  )
+
+family <- ggplot(mdsUg, aes(x=x, y=y, col=familyGroup)) +
+  geom_point() +
+  # geom_text(aes(label=ptid), size=2) +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("family group")', x=-2, y=2, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = c(0.45, 0.25),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        legend.title  = element_blank()) +
+    guides(col=guide_legend(ncol=5)) 
+
+plot_grid(pttype, age, score, sex, BMI, BCG, family, ncol=2)
+
+```
+
+### Supplemental Figure 5: Multidimensional scaling of transcriptomes by available epidemiologic and demographic data in South Africa 
+
+Global effects of clinical phenotype (RSTR versus LTBI), age, body mass index (BMI), BCG status, occupation, housing arrangement, country of origin, ethnicity, and current employment or cumulative exposure within gold mines (i.e. employment ‘underground’) on monocyte transcription in South Africa were assessed by multidimensional scaling (MDS).
+
+```{r SF5_SouthAfricaMacrophage_MDS, fig.height=12, fig.width=9}
+pttype <- ggplot(mdsSA, aes(x=x, y=y, col=pttype)) +
+  geom_point() +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("clinical phenotype")', x=-2.5, y=1.25, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.2, 0.25),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        legend.title  = element_blank()
+  )
+
+age <- ggplot(mdsSA, aes(x=x, y=y, col=age)) +
+  geom_point() +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("age")', x=-2.5, y=1.25, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.2, 0.35),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        axis.title.y=element_blank(),
+        legend.title  = element_blank()
+  )
+
+underg <- ggplot(mdsSA, aes(x=x, y=y, col=underg)) +
+  geom_point() +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("currently working underground")', x=-2.5, y=1.25, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.2, 0.25),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        legend.title  = element_blank()
+  )
+
+BMI <- ggplot(mdsSA, aes(x=x, y=y, col=BMI)) +
+  geom_point() +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("BMI")', x=-2.5, y=1.25, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = c(0.2, 0.35),
+        axis.title.x=element_blank(),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        axis.title.y=element_blank(),
+        legend.title  = element_blank()
+  )
+
+BCG <- ggplot(mdsSA, aes(x=x, y=y, col=BCG)) +
+  geom_point() +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("BCG scar")', x=-2.5, y=1.25, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.25, 0.3),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        legend.title  = element_blank()
+)
+
+country <- ggplot(mdsSA, aes(x=x, y=y, col=country)) +
+  geom_point() +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("country of origin")', x=-2.5, y=1.25, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.2, 0.45),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        axis.title.y=element_blank(),
+        legend.title  = element_blank()
+)
+
+occ <- ggplot(mdsSA, aes(x=x, y=y, col=occ)) +
+  geom_point() +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("occupation")', x=-2.5, y=1.25, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.35, 0.3),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        legend.title  = element_blank()
+)
+
+uyears <- ggplot(mdsSA, aes(x=x, y=y, col=uyears)) +
+  geom_point() +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("years underground")', x=-2.5, y=1.25, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x=element_blank(),
+        legend.position = c(0.2, 0.3),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        axis.title.y=element_blank(),
+        legend.title  = element_blank()
+)
+
+ethnic <- ggplot(mdsSA, aes(x=x, y=y, col=ethnic)) +
+  geom_point() +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("ethnicity")', x=-2.5, y=1.25, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = c(0.2, 0.3),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        legend.title  = element_blank()
+  )
+
+live <- ggplot(mdsSA, aes(x=x, y=y, col=live)) +
+  geom_point() +
+  labs(x="Leading logFC dim1", y="Leading logFC dim2") +
+  annotate("text", label='bold("living in hostel")', x=-2.5, y=1.25, size=4, parse=TRUE, hjust=0) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = c(0.2, 0.25),
+        legend.text = element_text(size=7),
+        legend.box.background = element_rect(color=NA),
+        axis.title.y=element_blank(),
+        legend.title  = element_blank()
+  )
+
+# png("output/manuscript/Hawn_SAMacrophage_mediaonly_MDSplots_5x2panels.png", width=850, height=1100, res=100)
+plot_grid(pttype, age, underg, country, occ, BMI, BCG, uyears, ethnic, live, ncol=2)
+# dev.off()
+```
+
+### Supplemental Figure 6: Gene sets that enrich among RSTR phenotypes across populations suggest differential monocyte activation states
+
+To identify macrophage activation states that correlate with the gene sets enriched among RSTR or LTBI monocyte transcriptomes, heat maps were constructed using the primary WGNCA data by Xue et al(33). Each macrophage module that was enriched among RSTR donor monocytes (Uganda FDR <0.001, SA FDR<0.01) are represented as rows. The Pearson correlation coefficients of each stimulus and each Xue WGNA module eigengene are indicated (colors) along with the degree of significance of that correlation. LA, lauric acid; PA, palmitic acid; SA, stauric acid; LiA, linoleic acid; OA, oleic acid; HDL, high-density lipoprotein; IFNb/g, interferon-b/g; upLPS, ultrapure lipopolysaccharide; P3C, Pam3CSK4; PGE2, prostaglandin E2; IC, immune complex; GC, dexamethasone; sLPS, standard LPS; TPP, TNF+prostaglandin E2+Pam3CSK4.
+
+```{r SF6}
+# rtab <- read.csv("data/Xue_2014_Table_S2_Pearson.csv",row.names = 1)
+# ptab <- read.csv("data/Xue_2014_Table_S2_Pearson_pval.csv", row.names = 1)
+# 
+# rownames(rtab) <- gsub("mod", "set", rownames(rtab))
+# rownames(ptab) <- gsub("mod", "set", rownames(ptab))
+
+# change column names to be pheatmap-friendly
+colnames(rtab) <- gsub("TNF & P3C & PGE & TPP & ", "TPP", (gsub("γ", "g",gsub("β", "b",gsub("\\.", " & ", colnames(rtab))))))
+colnames(ptab) <- gsub("TNF & P3C & PGE & TPP & ", "TPP", (gsub("γ", "g",gsub("β", "b",gsub("\\.", " & ", colnames(rtab))))))
+
+### sets enriched in RSTR
+RSTRsets <- paste("set", c(27,6,26,24), sep="_")
+rtab_RSTR <- rtab[rownames(rtab) %in% RSTRsets,]
+ptab_RSTR <- ptab[rownames(ptab) %in% RSTRsets,]
+
+# convert numeric p-vals to asterisks
+ptab_RSTR[ptab_RSTR < 0.001] = "***"
+ptab_RSTR[ptab_RSTR < 0.01 & ptab_RSTR!="***"] = "**"
+ptab_RSTR[ptab_RSTR < 0.05 & ptab_RSTR!="***" & ptab_RSTR!="**"] = "*"
+ptab_RSTR[ptab_RSTR > 0] = ""
+
+p1 <- pheatmap(rtab_RSTR, main="", fontsize_row = 7, fontsize_col = 7, display_numbers = ptab_RSTR)
+print(p1)
+
+```
+
+### Supplemental Figure 7: Palmitic acid and oleic acid are minimally toxic to MDMs at doses ≤ 200 μM
+
+Cytotoxicity was measured hourly in healthy monocyte derived macrophages after exposure to oleic acid (OA), palmitic acid (PA) or controls matched for BSA vehicle content over 72 hours. Disruption of membrane integrity due to treatment toxicity was quantified as the number of cells positive for nuclear fluorescent stain (Sytox+, green) divided by the number of total cells seeded in control wells (Syto+, not shown). Bright field and fluorescent overlay after treatment with
+200 μM FFA for 72 hours is shown along with peak cytotoxicity calculations at indicated doses
+
+(A) Despite cytotoxicity, PA (400 μM) further potentiated intracellular Mtb growth in monocyte-derived macrophages 
+
+(B) that were infected with Mtb-lux and treated as described in Figure 4. Data were fit using a simple linear model and a dose-dependent treatment effect of PA was significant
